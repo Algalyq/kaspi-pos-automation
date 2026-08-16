@@ -89,8 +89,9 @@ jobs:
             --add-host=host.docker.internal:host-gateway \
             -p ${{ steps.vars.outputs.port }}:3001 \
             -e PORT=3001 \
+            -e DATA_DIR=/app/data \
             -e TOKEN_SECRET_KEY=${{ secrets.KASPI_POS_TOKEN_SECRET_KEY }} \
-            -v kaspi-pos-data:/app \
+            -v kaspi-pos-data:/app/data \
             ghcr.io/$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]'):${{ steps.vars.outputs.tag }}
 
       - name: Cleanup old images

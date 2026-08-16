@@ -10,7 +10,9 @@ import { getWebhooksByEvent } from './webhookStore.js';
 import { logger } from './logger.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const TRACKED_FILE = path.join(__dirname, '..', 'tracked-payments.json');
+const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, '..', 'data');
+if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+const TRACKED_FILE = path.join(DATA_DIR, 'tracked-payments.json');
 
 // ─── Tracked payments ───
 
@@ -45,7 +47,7 @@ const loadTracked = () => {
 
 // ─── Pending retries (persisted) ───
 
-const RETRY_FILE = path.join(__dirname, '..', 'webhook-retries.json');
+const RETRY_FILE = path.join(DATA_DIR, 'webhook-retries.json');
 let pendingRetries = [];
 
 const saveRetries = () => {
