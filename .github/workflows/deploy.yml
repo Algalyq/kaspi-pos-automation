@@ -26,11 +26,15 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Lowercase image name
+        id: lower
+        run: echo "name=$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
+
       - name: Extract metadata
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          images: ${{ env.REGISTRY }}/${{ steps.lower.outputs.name }}
           tags: |
             type=ref,event=branch
             type=raw,value=latest,enable={{is_default_branch}}
@@ -69,7 +73,8 @@ jobs:
 
       - name: Pull image
         run: |
-          docker pull ghcr.io/${{ github.repository }}:${{ steps.vars.outputs.tag }}
+          IMAGE=$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')
+          docker pull ghcr.io/${IMAGE}:${{ steps.vars.outputs.tag }}
 
       - name: Stop old container
         run: |
@@ -86,7 +91,7 @@ jobs:
             -e PORT=3001 \
             -e TOKEN_SECRET_KEY=${{ secrets.KASPI_POS_TOKEN_SECRET_KEY }} \
             -v kaspi-pos-data:/app \
-            ghcr.io/${{ github.repository }}:${{ steps.vars.outputs.tag }}
+            ghcr.io/$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]'):${{ steps.vars.outputs.tag }}
 
       - name: Cleanup old images
         run: docker image prune -f || true
