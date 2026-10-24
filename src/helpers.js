@@ -45,15 +45,36 @@ export const extractUserToken = (resp) => {
 
 // ─── Logged fetch wrapper ───
 
+// Redact secrets/PII before writing to logs: tokens, cookies,
+// signatures, OTP and phone numbers must not persist in log files.
+const MASK = '***';
+const REDACT_HEADERS = /^(cookie|set-cookie|authorization|x-api-key|x-kb-tokensn|x-kb-tokensnmac|x-token-sn|x-vtoken-secret|x-sign)$/i;
+const REDACT_KEYS = /token|secret|sign|pin|password|otp|phone/i;
+
+const redact = (obj) => {
+  if (Array.isArray(obj)) return obj.map(redact);
+  if (obj && typeof obj === 'object') {
+    return Object.fromEntries(
+      Object.entries(obj).map(([k, v]) => [k, REDACT_KEYS.test(k) ? MASK : redact(v)]),
+    );
+  }
+  return obj;
+};
+
+const redactHeaders = (headers = {}) =>
+  Object.fromEntries(
+    Object.entries(headers).map(([k, v]) => [k, REDACT_HEADERS.test(k) ? MASK : v]),
+  );
+
 export const loggedFetch = async (url, options = {}) => {
   const method = (options.method || 'GET').toUpperCase();
   console.log(`\n>>> ${method} ${url}`);
-  if (options.headers) console.log('>>> Headers:', JSON.stringify(options.headers, null, 2));
+  if (options.headers) console.log('>>> Headers:', JSON.stringify(redactHeaders(options.headers), null, 2));
   if (options.body) {
     try {
-      console.log('>>> Body:', JSON.parse(options.body));
+      console.log('>>> Body:', JSON.stringify(redact(JSON.parse(options.body)), null, 2));
     } catch {
-      console.log('>>> Body:', options.body);
+      console.log('>>> Body:', MASK);
     }
   }
 
@@ -70,7 +91,7 @@ export const loggedFetch = async (url, options = {}) => {
     }
   }
   console.log(`<<< ${resp.status} ${resp.statusText}`);
-  console.log('<<< Response:', typeof body === 'object' ? JSON.stringify(body, null, 2) : body);
+  console.log('<<< Response:', typeof body === 'object' ? JSON.stringify(redact(body), null, 2) : body);
   return resp;
 };
 

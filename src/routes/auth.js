@@ -17,6 +17,15 @@ const router = Router();
 // In-flight auth sessions keyed by processId (temporary, cleared after finish)
 const authSessions = new Map();
 
+// Serializes /finish: the ECDH keypair is a single shared file/global —
+// two concurrent finishes would steal each other's shared secret.
+let finishQueue = Promise.resolve();
+const enqueueFinish = (session) => {
+  const p = finishQueue.then(() => doFinish(session));
+  finishQueue = p.catch(() => {});
+  return p;
+};
+
 // ═══════════════════════════════════════════════════
 //  Step 1 — Init entrance (get processId)
 // ═══════════════════════════════════════════════════
@@ -160,8 +169,8 @@ router.post('/verify-otp', async (req, res) => {
     const body = await resp.json();
 
     if (body.data?.type === 'kpDeviceRegistration' || body.view?.code === 'KPMobileCall') {
-      // OTP verified — automatically call finish
-      const finishResult = await doFinish(session);
+      // OTP verified — automatically call finish (serialized)
+      const finishResult = await enqueueFinish(session);
       authSessions.delete(processId);
       res.json({
         success: true,
